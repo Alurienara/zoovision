@@ -2,6 +2,7 @@ import torch
 from torchvision import models, transforms
 from PIL import Image
 import os
+import urllib.request
 
 # Путь к модели
 MODEL_PATH = os.path.join(
@@ -18,7 +19,6 @@ model.eval()
 LABELS_URL = (
     "https://raw.githubusercontent.com/pytorch/hub/master/imagenet_classes.txt"
 )
-import urllib.request
 
 with urllib.request.urlopen(LABELS_URL) as f:
     categories = [line.strip().decode("utf-8") for line in f]
