@@ -7,14 +7,12 @@ st.title("🐾 ZooVision — кто перед нами?")
 
 st.markdown(
     """
-    Загрузите фото животного — и мы постараемся определить вид.  
+    Загрузите фото животного — и мы постараемся определить вид.
     При желании вы можете вручную обрезать изображение, чтобы повысить точность анализа 🎯
     """
 )
 
-uploaded_file = st.file_uploader(
-    "📷 Загрузите изображение", type=["jpg", "jpeg", "png"]
-)
+uploaded_file = st.file_uploader("📷 Загрузите изображение", type=["jpg", "jpeg", "png"])
 
 if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
@@ -62,9 +60,7 @@ if uploaded_file:
 
         # Кроп и предпросмотр
         cropped_image = image.crop((left, top, right, bottom))
-        st.image(
-            cropped_image, caption="🔍 Обрезанное изображение", use_container_width=True
-        )
+        st.image(cropped_image, caption="🔍 Обрезанное изображение", use_container_width=True)
         image_for_prediction = cropped_image
     else:
         image_for_prediction = image
