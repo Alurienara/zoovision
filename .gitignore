@@ -5,4 +5,4 @@ __pycache__/
 *.DS_Store
 *.env
 .streamlit/
-#model/weights/*.pth
+model/weights/*.pth
