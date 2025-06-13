@@ -1,8 +1,8 @@
 import torch
 from torchvision import models, transforms
 from PIL import Image
-import os
 import urllib.request
+import os
 
 # Путь к модели
 MODEL_PATH = os.path.join(

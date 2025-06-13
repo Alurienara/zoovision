@@ -1,6 +1,5 @@
 from model.predictor import predict_image
 from PIL import Image
-import os
 
 
 def test_predict_image_output_format():
