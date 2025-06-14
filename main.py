@@ -68,14 +68,14 @@ if uploaded_file:
             realtime_update=True,
             box_color="#00FF889D",
             aspect_ratio=None,
-            return_type='image'
+            return_type="image",
         )
 
         if cropped_image and cropped_image.size[0] > 0:
             st.image(
                 cropped_image,
                 caption=t["cropped_image"],
-                use_container_width=True
+                use_container_width=True,
             )
             image_for_prediction = cropped_image
         else:
@@ -158,9 +158,7 @@ if uploaded_file:
                         st.write(f"- **{label}** ({score:.1f}%)")
 
                     options = [label for label, score, _ in matches]
-                    selected = st.radio(
-                        t["select_best"], options
-                    )
+                    selected = st.radio(t["select_best"], options)
 
                     def confirm_correction():
                         st.session_state.correction_confirmed = True
@@ -191,14 +189,9 @@ if uploaded_file:
                     }
 
                     with open(
-                        "feedback.csv",
-                        mode="a",
-                        newline="",
-                        encoding="utf-8"
+                        "feedback.csv", mode="a", newline="", encoding="utf-8"
                     ) as f:
-                        writer = csv.DictWriter(
-                            f, fieldnames=log_entry.keys()
-                        )
+                        writer = csv.DictWriter(f, fieldnames=log_entry.keys())
                         if f.tell() == 0:
                             writer.writeheader()
                         writer.writerow(log_entry)
