@@ -214,7 +214,7 @@ if st.button("🗑️ Очистить всё"):
     st.session_state.clear()
     st.rerun()
 
-#"О проекте"
+# "О проекте"
 with st.sidebar:
     st.markdown("## ℹ️ О проекте")
     st.write(
