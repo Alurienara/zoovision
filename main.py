@@ -1,3 +1,5 @@
+import csv
+from datetime import datetime
 import streamlit as st
 from PIL import Image
 from model.predictor import predict_image as predict_image_inat
@@ -5,21 +7,21 @@ from rapidfuzz import process, fuzz
 import os
 import time
 from streamlit_cropper import st_cropper
-from translations import TRANSLATIONS  # твой словарь
+from translations import TRANSLATIONS
 
 
-# --- Настройки страницы ---
+# Настройки страницы
 st.set_page_config(page_title="ZooVision", layout="centered")
 
-# --- Выбор языка ---
+# Выбор языка
 language = st.selectbox("🌐 Язык | Language", ["ru", "en"])
 t = TRANSLATIONS[language]
 
-# --- Заголовок и описание ---
+# Заголовок и описание
 st.title(t["title"])
 st.markdown(t["description"])
 
-# --- Инициализация Session State ---
+# Инициализация Session State
 for key in [
     "results",
     "feedback_expanded",
@@ -32,7 +34,7 @@ for key in [
             False if "confirmed" in key or "expanded" in key else ""
         )
 
-# --- Загрузка файла ---
+# Загрузка файла
 uploaded_file = st.file_uploader(
     t["upload_prompt"], type=["jpg", "jpeg", "png"]
 )
@@ -53,9 +55,9 @@ if uploaded_file:
 
     st.image(image, caption=t["original_image"], use_container_width=True)
 
-    image_for_prediction = image  # по умолчанию
+    image_for_prediction = image
 
-    # --- Обрезка по желанию ---
+    # Обрезка по желанию
     use_crop = st.checkbox(t["crop_manual"], value=False)
 
     if use_crop:
@@ -64,7 +66,7 @@ if uploaded_file:
         cropped_image = st_cropper(
             image,
             realtime_update=True,
-            box_color='#0000FF',
+            box_color="#00FF889D",
             aspect_ratio=None,
             return_type='image'
         )
@@ -80,7 +82,7 @@ if uploaded_file:
             st.info("🔹 Подвиньте рамку или начните редактировать!")
             image_for_prediction = image
 
-    # --- Кнопка запуска анализа ---
+    # Кнопка запуска анализа
     if st.button(t["analyze_button"], key="predict_button"):
         progress = st.progress(0)
         with st.spinner(t["analyze_image"]):
@@ -106,7 +108,7 @@ if uploaded_file:
         st.session_state.user_text = ""
         st.session_state.selected_correction = ""
 
-    # --- Показ результатов и блока обратной связи ---
+    # Показ результатов и блока обратной связи
     if st.session_state.results:
         results = st.session_state.results
 
@@ -128,7 +130,7 @@ if uploaded_file:
         else:
             st.warning(t["no_confidence"])
 
-        # --- Блок обратной связи ---
+        # Блок обратной связи
         if not st.session_state.feedback_expanded:
             if st.button(t["wrong_detected"]):
                 st.session_state.feedback_expanded = True
@@ -181,6 +183,25 @@ if uploaded_file:
                         on_click=confirm_correction,
                         disabled=st.session_state.correction_confirmed,
                     )
+                    log_entry = {
+                        "file_name": uploaded_file.name,
+                        "model_prediction": filtered_results[0][0],
+                        "user_correction": selected,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+
+                    with open(
+                        "feedback.csv",
+                        mode="a",
+                        newline="",
+                        encoding="utf-8"
+                    ) as f:
+                        writer = csv.DictWriter(
+                            f, fieldnames=log_entry.keys()
+                        )
+                        if f.tell() == 0:
+                            writer.writeheader()
+                        writer.writerow(log_entry)
 
             else:
                 st.success(
