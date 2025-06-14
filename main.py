@@ -4,9 +4,9 @@ from model.predictor import predict_image as predict_image_inat
 from rapidfuzz import process, fuzz
 import os
 import time
+from streamlit_cropper import st_cropper
 
 
-# Загрузка ImageNet меток с кэшем
 @st.cache_resource
 def load_categories():
     import urllib.request
@@ -22,7 +22,7 @@ def load_categories():
 
 categories = load_categories()
 
-# Настройки страницы
+# --- Настройки страницы ---
 st.set_page_config(page_title="ZooVision", layout="centered")
 st.title("🐾 ZooVision — кто перед нами?")
 
@@ -33,7 +33,7 @@ st.markdown(
     """
 )
 
-# Инициализация сессии
+# --- Инициализация Session State ---
 for key in [
     "results",
     "feedback_expanded",
@@ -46,7 +46,7 @@ for key in [
             False if "confirmed" in key or "expanded" in key else ""
         )
 
-# Загрузка файла
+# --- Загрузка файла ---
 uploaded_file = st.file_uploader(
     "📷 Загрузите изображение", type=["jpg", "jpeg", "png"]
 )
@@ -55,17 +55,13 @@ if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
     img_width, img_height = image.size
 
-    # Сброс обрезки при новом файле
+    # --- Сброс при новом файле ---
     current_filename = uploaded_file.name
     if "last_filename" not in st.session_state:
         st.session_state.last_filename = ""
     if current_filename != st.session_state.last_filename:
-        st.session_state.left = 0
-        st.session_state.right = img_width
-        st.session_state.top = 0
-        st.session_state.bottom = img_height
         st.session_state.last_filename = current_filename
-        st.session_state.results = None  # сбросить старый результат
+        st.session_state.results = None
         st.session_state.feedback_expanded = False
         st.session_state.correction_confirmed = False
         st.session_state.user_text = ""
@@ -75,42 +71,37 @@ if uploaded_file:
         image, caption="🖼 Оригинальное изображение", use_container_width=True
     )
 
-    image_for_prediction = image
+    image_for_prediction = image  # дефолт
 
-    # Обрезка по желанию
+    # --- Обрезка с Cropper ---
     use_crop = st.checkbox("✂️ Обрезать изображение вручную?", value=False)
 
     if use_crop:
         st.subheader("📐 Настройка обрезки")
 
-        left = st.session_state.get("left", 0)
-        right = st.session_state.get("right", img_width)
-        top = st.session_state.get("top", 0)
-        bottom = st.session_state.get("bottom", img_height)
-
-        col1, col2 = st.columns(2)
-        with col1:
-            left = st.slider("Слева", 0, img_width - 1, left)
-            right = st.slider("Справа", left + 1, img_width, right)
-        with col2:
-            top = st.slider("Сверху", 0, img_height - 1, top)
-            bottom = st.slider("Снизу", top + 1, img_height, bottom)
-
-        st.session_state.left = left
-        st.session_state.right = right
-        st.session_state.top = top
-        st.session_state.bottom = bottom
-
-        cropped_image = image.crop((left, top, right, bottom))
-        st.image(
-            cropped_image,
-            caption="🔍 Обрезанное изображение",
-            use_container_width=True,
+        cropped_image = st_cropper(
+            image,
+            realtime_update=True,
+            box_color="#9DFF00FF",
+            aspect_ratio=None,
+            return_type='image'
         )
-        image_for_prediction = cropped_image
 
-    # Кнопка запуска анализа
-    if st.button("🔍 Определить, кто это"):
+        if cropped_image and cropped_image.size[0] > 0 and cropped_image.size[1] > 0:
+            st.image(
+                cropped_image,
+                caption="🔍 Обрезанное изображение",
+                use_container_width=True
+            )
+            image_for_prediction = cropped_image
+        else:
+            st.info("🔹 Подвиньте рамку или начните редактировать!")
+            image_for_prediction = image
+    else:
+        image_for_prediction = image
+
+    # --- Кнопка запуска анализа ---
+    if st.button("🔍 Определить, кто это", key="predict_button"):
         progress = st.progress(0)
         with st.spinner("Анализируем изображение..."):
 
@@ -135,7 +126,7 @@ if uploaded_file:
         st.session_state.user_text = ""
         st.session_state.selected_correction = ""
 
-    # Показ результатов и блока обратной связи
+    # --- Показ результатов и блока обратной связи ---
     if st.session_state.results:
         results = st.session_state.results
 
@@ -159,7 +150,7 @@ if uploaded_file:
                 "Модель не смогла уверенно распознать объект на изображении."
             )
 
-        # Блок обратной связи
+        # --- Блок обратной связи ---
         if not st.session_state.feedback_expanded:
             if st.button("❌ Животное распознано неверно"):
                 st.session_state.feedback_expanded = True
@@ -191,12 +182,10 @@ if uploaded_file:
                         "Выберите наиболее подходящий вариант:", options
                     )
 
-                    # Кнопка с on_click и disabled
                     def confirm_correction():
                         st.session_state.correction_confirmed = True
                         st.session_state.selected_correction = selected
 
-                        # Сохраняем файл
                         label_folder = (
                             f"corrections/{selected.replace(' ', '_')}"
                         )
