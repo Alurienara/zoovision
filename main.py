@@ -5,33 +5,19 @@ from rapidfuzz import process, fuzz
 import os
 import time
 from streamlit_cropper import st_cropper
+from translations import TRANSLATIONS  # твой словарь
 
-
-@st.cache_resource
-def load_categories():
-    import urllib.request
-
-    url = (
-        "https://raw.githubusercontent.com/pytorch/hub/master/"
-        "imagenet_classes.txt"
-    )
-    with urllib.request.urlopen(url) as f:
-        categories = [line.strip().decode("utf-8") for line in f]
-    return categories
-
-
-categories = load_categories()
 
 # --- Настройки страницы ---
 st.set_page_config(page_title="ZooVision", layout="centered")
-st.title("🐾 ZooVision — кто перед нами?")
 
-st.markdown(
-    """
-    Загрузите фото животного — и мы постараемся определить вид.
-    Вы можете вручную обрезать изображение, чтобы повысить точность анализа 🎯
-    """
-)
+# --- Выбор языка ---
+language = st.selectbox("🌐 Язык | Language", ["ru", "en"])
+t = TRANSLATIONS[language]
+
+# --- Заголовок и описание ---
+st.title(t["title"])
+st.markdown(t["description"])
 
 # --- Инициализация Session State ---
 for key in [
@@ -48,62 +34,56 @@ for key in [
 
 # --- Загрузка файла ---
 uploaded_file = st.file_uploader(
-    "📷 Загрузите изображение", type=["jpg", "jpeg", "png"]
+    t["upload_prompt"], type=["jpg", "jpeg", "png"]
 )
 
 if uploaded_file:
     image = Image.open(uploaded_file).convert("RGB")
-    img_width, img_height = image.size
 
-    # --- Сброс при новом файле ---
     current_filename = uploaded_file.name
     if "last_filename" not in st.session_state:
         st.session_state.last_filename = ""
     if current_filename != st.session_state.last_filename:
-        st.session_state.last_filename = current_filename
         st.session_state.results = None
         st.session_state.feedback_expanded = False
         st.session_state.correction_confirmed = False
         st.session_state.user_text = ""
         st.session_state.selected_correction = ""
+        st.session_state.last_filename = current_filename
 
-    st.image(
-        image, caption="🖼 Оригинальное изображение", use_container_width=True
-    )
+    st.image(image, caption=t["original_image"], use_container_width=True)
 
-    image_for_prediction = image  # дефолт
+    image_for_prediction = image  # по умолчанию
 
-    # --- Обрезка с Cropper ---
-    use_crop = st.checkbox("✂️ Обрезать изображение вручную?", value=False)
+    # --- Обрезка по желанию ---
+    use_crop = st.checkbox(t["crop_manual"], value=False)
 
     if use_crop:
-        st.subheader("📐 Настройка обрезки")
+        st.subheader(t["crop_manual"])
 
         cropped_image = st_cropper(
             image,
             realtime_update=True,
-            box_color="#9DFF00FF",
+            box_color='#0000FF',
             aspect_ratio=None,
             return_type='image'
         )
 
-        if cropped_image and cropped_image.size[0] > 0 and cropped_image.size[1] > 0:
+        if cropped_image and cropped_image.size[0] > 0:
             st.image(
                 cropped_image,
-                caption="🔍 Обрезанное изображение",
+                caption=t["cropped_image"],
                 use_container_width=True
             )
             image_for_prediction = cropped_image
         else:
             st.info("🔹 Подвиньте рамку или начните редактировать!")
             image_for_prediction = image
-    else:
-        image_for_prediction = image
 
     # --- Кнопка запуска анализа ---
-    if st.button("🔍 Определить, кто это", key="predict_button"):
+    if st.button(t["analyze_button"], key="predict_button"):
         progress = st.progress(0)
-        with st.spinner("Анализируем изображение..."):
+        with st.spinner(t["analyze_image"]):
 
             time.sleep(0.2)
             progress.progress(20)
@@ -134,31 +114,29 @@ if uploaded_file:
             (label, score) for label, score in results if score > 0.01
         ]
 
-        st.subheader("🔎 Результаты классификации:")
+        st.subheader(t["results_title"])
         if filtered_results:
             main_label, main_score = filtered_results[0]
             st.success(
-                f"✅ Это, скорее всего: **{main_label}** ({main_score:.2%})"
+                t["main_result"].format(label=main_label, score=main_score)
             )
 
             if len(filtered_results) > 1:
-                st.markdown("### Также возможные варианты:")
+                st.markdown(t["also_possible"])
                 for label, score in filtered_results[1:]:
                     st.write(f"• {label} — {score:.2%}")
         else:
-            st.warning(
-                "Модель не смогла уверенно распознать объект на изображении."
-            )
+            st.warning(t["no_confidence"])
 
         # --- Блок обратной связи ---
         if not st.session_state.feedback_expanded:
-            if st.button("❌ Животное распознано неверно"):
+            if st.button(t["wrong_detected"]):
                 st.session_state.feedback_expanded = True
 
         if st.session_state.feedback_expanded:
             if not st.session_state.correction_confirmed:
                 st.session_state.user_text = st.text_input(
-                    "Введите, что изображено на фото",
+                    t["feedback_input"],
                     value=st.session_state.user_text,
                 )
 
@@ -173,13 +151,13 @@ if uploaded_file:
                         scorer=fuzz.token_sort_ratio,
                         limit=3,
                     )
-                    st.write("🔎 Наиболее похожие варианты:")
+                    st.write(t["matches_title"])
                     for label, score, _ in matches:
                         st.write(f"- **{label}** ({score:.1f}%)")
 
                     options = [label for label, score, _ in matches]
                     selected = st.radio(
-                        "Выберите наиболее подходящий вариант:", options
+                        t["select_best"], options
                     )
 
                     def confirm_correction():
@@ -199,13 +177,14 @@ if uploaded_file:
                             f.write(uploaded_file.getbuffer())
 
                     st.button(
-                        "✅ Подтвердить правильность",
+                        t["confirm_button"],
                         on_click=confirm_correction,
                         disabled=st.session_state.correction_confirmed,
                     )
 
             else:
                 st.success(
-                    f"Спасибо! Фото учтено как "
-                    f"'{st.session_state.selected_correction}'"
+                    t["thanks"].format(
+                        label=st.session_state.selected_correction
+                    )
                 )
