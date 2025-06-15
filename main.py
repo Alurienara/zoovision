@@ -15,9 +15,7 @@ st.set_page_config(page_title="ZooVision", layout="centered")
 
 # Выбор языка
 language = st.radio(
-    "🌐 Язык | Language",
-    options=["ru", "en"],
-    horizontal=True
+    "🌐 Язык | Language", options=["ru", "en"], horizontal=True
 )
 translations = TRANSLATIONS[language]
 
@@ -57,8 +55,9 @@ if uploaded_file:
         st.session_state.selected_correction = ""
         st.session_state.last_filename = current_filename
 
-    st.image(image, caption=translations["original_image"],
-             use_container_width=True)
+    st.image(
+        image, caption=translations["original_image"], use_container_width=True
+    )
 
     image_for_prediction = image
 
@@ -125,8 +124,9 @@ if uploaded_file:
         if filtered_results:
             main_label, main_score = filtered_results[0]
             st.success(
-                translations["main_result"].format(label=main_label,
-                                                   score=main_score)
+                translations["main_result"].format(
+                    label=main_label, score=main_score
+                )
             )
 
             if len(filtered_results) > 1:
