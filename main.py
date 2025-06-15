@@ -14,12 +14,16 @@ from translations import TRANSLATIONS
 st.set_page_config(page_title="ZooVision", layout="centered")
 
 # Выбор языка
-language = st.selectbox("🌐 Язык | Language", ["ru", "en"])
-t = TRANSLATIONS[language]
+language = st.radio(
+    "🌐 Язык | Language",
+    options=["ru", "en"],
+    horizontal=True
+)
+translations = TRANSLATIONS[language]
 
 # Заголовок и описание
-st.title(t["title"])
-st.markdown(t["description"])
+st.title(translations["title"])
+st.markdown(translations["description"])
 
 # Инициализация Session State
 for key in [
@@ -36,7 +40,7 @@ for key in [
 
 # Загрузка файла
 uploaded_file = st.file_uploader(
-    t["upload_prompt"], type=["jpg", "jpeg", "png"]
+    translations["upload_prompt"], type=["jpg", "jpeg", "png"]
 )
 
 if uploaded_file:
@@ -53,20 +57,21 @@ if uploaded_file:
         st.session_state.selected_correction = ""
         st.session_state.last_filename = current_filename
 
-    st.image(image, caption=t["original_image"], use_container_width=True)
+    st.image(image, caption=translations["original_image"],
+             use_container_width=True)
 
     image_for_prediction = image
 
     # Обрезка по желанию
-    use_crop = st.checkbox(t["crop_manual"], value=False)
+    use_crop = st.checkbox(translations["crop_manual"], value=False)
 
     if use_crop:
-        st.subheader(t["crop_manual"])
+        st.subheader(translations["crop_manual"])
 
         cropped_image = st_cropper(
             image,
             realtime_update=True,
-            box_color="#00FF889D",
+            box_color="#FF4860A6",
             aspect_ratio=None,
             return_type="image",
         )
@@ -74,7 +79,7 @@ if uploaded_file:
         if cropped_image and cropped_image.size[0] > 0:
             st.image(
                 cropped_image,
-                caption=t["cropped_image"],
+                caption=translations["cropped_image"],
                 use_container_width=True,
             )
             image_for_prediction = cropped_image
@@ -83,9 +88,9 @@ if uploaded_file:
             image_for_prediction = image
 
     # Кнопка запуска анализа
-    if st.button(t["analyze_button"], key="predict_button"):
+    if st.button(translations["analyze_button"], key="predict_button"):
         progress = st.progress(0)
-        with st.spinner(t["analyze_image"]):
+        with st.spinner(translations["analyze_image"]):
 
             time.sleep(0.2)
             progress.progress(20)
@@ -116,29 +121,30 @@ if uploaded_file:
             (label, score) for label, score in results if score > 0.01
         ]
 
-        st.subheader(t["results_title"])
+        st.subheader(translations["results_title"])
         if filtered_results:
             main_label, main_score = filtered_results[0]
             st.success(
-                t["main_result"].format(label=main_label, score=main_score)
+                translations["main_result"].format(label=main_label,
+                                                   score=main_score)
             )
 
             if len(filtered_results) > 1:
-                st.markdown(t["also_possible"])
+                st.markdown(translations["also_possible"])
                 for label, score in filtered_results[1:]:
                     st.write(f"• {label} — {score:.2%}")
         else:
-            st.warning(t["no_confidence"])
+            st.warning(translations["no_confidence"])
 
         # Блок обратной связи
         if not st.session_state.feedback_expanded:
-            if st.button(t["wrong_detected"]):
+            if st.button(translations["wrong_detected"]):
                 st.session_state.feedback_expanded = True
 
         if st.session_state.feedback_expanded:
             if not st.session_state.correction_confirmed:
                 st.session_state.user_text = st.text_input(
-                    t["feedback_input"],
+                    translations["feedback_input"],
                     value=st.session_state.user_text,
                 )
 
@@ -153,12 +159,12 @@ if uploaded_file:
                         scorer=fuzz.token_sort_ratio,
                         limit=3,
                     )
-                    st.write(t["matches_title"])
+                    st.write(translations["matches_title"])
                     for label, score, _ in matches:
                         st.write(f"- **{label}** ({score:.1f}%)")
 
                     options = [label for label, score, _ in matches]
-                    selected = st.radio(t["select_best"], options)
+                    selected = st.radio(translations["select_best"], options)
 
                     def confirm_correction():
                         st.session_state.correction_confirmed = True
@@ -177,7 +183,7 @@ if uploaded_file:
                             f.write(uploaded_file.getbuffer())
 
                     st.button(
-                        t["confirm_button"],
+                        translations["confirm_button"],
                         on_click=confirm_correction,
                         disabled=st.session_state.correction_confirmed,
                     )
@@ -198,32 +204,19 @@ if uploaded_file:
 
             else:
                 st.success(
-                    t["thanks"].format(
+                    translations["thanks"].format(
                         label=st.session_state.selected_correction
                     )
                 )
 # Кнопка "Очистить всё"
-if st.button("🗑️ Очистить всё"):
+if st.button(translations["remove"]):
     st.session_state.clear()
     st.rerun()
 
 # "О проекте"
 with st.sidebar:
-    st.markdown("## ℹ️ О проекте")
-    st.write(
-        """
-        **ZooVision** — финальный проект по курсу *Программная инженерия*.
-        Позволяет классифицировать животных на основе модели ResNet50.
-        Поддерживает ручную обрезку,
-        двуязычный интерфейс и сбор пользовательского фидбека
-        для последующего дообучения модели.
-        """
-    )
+    st.markdown(translations["about"])
+    st.write(translations["about_text"])
 
 # Футер
-st.markdown(
-    """
-    ---
-    🐾 **ZooVision © 2024** | Сделано с ❤️ студентами группы XYZ
-    """
-)
+st.markdown(translations["footer"])
